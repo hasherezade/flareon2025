@@ -1,7 +1,5 @@
 #include <windows.h>
 #include <iostream>
-
-#include <detours.h> // include MS Detours header
 #include <peconv.h> // include libPeConv header
 
 #include "util.h"
