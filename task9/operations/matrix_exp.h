@@ -53,7 +53,7 @@ static uint64_t mulmod(uint64_t a, uint64_t b, uint64_t mod) {
 }
 
 // C = (A * B) % mod
-static void matrixMuliplyModulo(const uint64_t A[MATRIX_SIZE][MATRIX_SIZE],
+static void matrixMultiplyModulo(const uint64_t A[MATRIX_SIZE][MATRIX_SIZE],
     const uint64_t B[MATRIX_SIZE][MATRIX_SIZE],
     uint64_t mod,
     uint64_t C[MATRIX_SIZE][MATRIX_SIZE])
@@ -100,10 +100,10 @@ void matrixExpotentiate(const uint64_t M_in[MATRIX_SIZE][MATRIX_SIZE],
 
     for (unsigned bit = 0; bit < 64; ++bit) {
         if ((e >> bit) & 1ULL) {
-            matrixMuliplyModulo(Result, Base, p, Tmp);
+            matrixMultiplyModulo(Result, Base, p, Tmp);
             matrixCopy(Result, Tmp);
         }
-        matrixMuliplyModulo(Base, Base, p, Tmp);
+        matrixMultiplyModulo(Base, Base, p, Tmp);
         matrixCopy(Base, Tmp);
     }
 }
