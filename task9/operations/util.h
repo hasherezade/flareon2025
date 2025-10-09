@@ -62,6 +62,18 @@ bool write_to_file(IN LPCTSTR in_path, IN BYTE* buf, IN size_t buf_size)
     return is_ok;
 }
 
+std::string get_base_filename(const std::string& path)
+{
+    // find last backslash
+    size_t pos = path.find_last_of("\\/");
+    std::string filename = (pos == std::string::npos) ? path : path.substr(pos + 1);
+
+    // remove all extensions
+    size_t dot = filename.find('.');
+    std::string base = (dot == std::string::npos) ? filename : filename.substr(0, dot);
+    return base;
+}
+
 bool isNumericDLL(const std::wstring& fullPath)
 {
     std::wstring dllName = fullPath;
