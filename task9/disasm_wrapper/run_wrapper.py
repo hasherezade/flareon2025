@@ -1,8 +1,14 @@
 #!/usr/bin/python3
+import argparse
+import os
+import pickle
+
 from disasm_wrapper import *
 from MatrixMod4x4 import *
+from FuncTypes import *
 
-MATRIX_DIM = 4
+DISASM_PATH = "./disasm-cli"
+DLLS_PATH = "./../resources/dlls/"
 
 def extract_values(lines):
     values = []
@@ -12,6 +18,16 @@ def extract_values(lines):
             # take the last token after splitting by spaces or comma
         value = line.split()[-1]
         values.append(value)
+    return values
+
+def extract_int_values(lines):
+    values = []
+    for addr, line in lines:
+        if not "movabs" in line:
+            continue
+            # take the last token after splitting by spaces or comma
+        value = line.split()[-1]
+        values.append(int(value,16))
     return values
 
 def get_args_type(lines):
@@ -29,71 +45,6 @@ def get_func_type(lines):
         return 3
     return None
 
-class FFuncWrapper:
-    def __init__(self, _dll, _func, _type, _values):
-        self.dll = _dll
-        self.func = _func
-        self.args = _values# []
-        self.type = _type # int
-        
-    def __str__(self):
-        return f"FFuncWrapper(dll={self.dll}, type={self.type}, args={self.args})"
-      
-class CheckFuncWrapper:
-    def __init__(self, _dll, _values):
-        self.dll = _dll
-        self.p = int(_values[0], 16)
-        self.e = int(_values[1], 16)
-        self.xor = []
-        self.m0 = []
-        self.m1 = []
-        self.m2 = []
-
-        for i in range(16):
-            self.xor.append(int(_values[2 + i], 16))
-        pos = 2 + 16 
-        for i in range(pos, len(_values)):
-            self.m2.append(int(_values[i], 16))
-        
-    def __str__(self):
-        xor_hex = [f"0x{v:x}" for v in self.xor]
-        m0_hex = [f"0x{v:x}" for v in self.m0]
-        m1_hex = [f"0x{v:x}" for v in self.m1]
-        m2_hex = [f"0x{v:x}" for v in self.m2]
-        return (f"CheckFuncWrapper(dll={self.dll}, "
-                f"p=0x{self.p:x}, "
-                f"e=0x{self.e:x}, "
-                f"xor={xor_hex}, "
-                f"m0={m0_hex}, "
-                f"m1={m1_hex}, "
-                f"m2={m2_hex})")
-        #return f"CheckFuncWrapper(dll={self.dll}, p={self.p}, e={self.e}, xor={self.xor}, m2={self.m2})"
-    
-    def matrixConstruct(self, buf):
-        return [buf[i:i+MATRIX_DIM] for i in range(0, len(buf), MATRIX_DIM)]
-
-    def is_dexor_valid(self, xored_m):
-        for i in range(MATRIX_DIM):
-            for j in range(MATRIX_DIM):
-                if xored_m[i] != xored_m[i + MATRIX_DIM *j]:
-                    return False
-        return True
-                
-    def dexor_m(self):
-        xored_m = []
-        for i in range(len(self.m1)):
-            xored_m.append(self.m1[i] ^ self.xor[i])
-        if self.is_dexor_valid(xored_m):
-            for i in range(MATRIX_DIM):
-                self.m0.append(xored_m[i])
-
-    def solve(self):
-        R = self.matrixConstruct(self.m2)
-        M_root = inverse_exponentiation(R, self.e, self.p)
-        #print("\n".join(mat_to_hex(M_root)))
-        self.m1 = [val for row in M_root for val in row]
-        self.dexor_m()
-
 def extract_dll_and_func(lines):
     results = []
     for _, line in lines:
@@ -102,36 +53,85 @@ def extract_dll_and_func(lines):
         comment = line.split(";", 1)[1].strip()  # take everything after ;
         if "." not in comment:
             continue
-        dll, func = comment.split(".dll.", 1)   # split into dll and function
-        results.append((dll, func))
+        results.append(comment.strip())
     return results
     
 def print_all(lines):
     for addr, line in lines:
         print(hex(addr), line)
         
-def dump_func(dll_name, func_name): #0000.dll
-    wrapper = DisasmCLIWrapper("./disasm-cli")  # or just "disasm-cli" if on PATH
-    lines = wrapper.disasm("./../resources/dlls/" + dll_name, func_name)
-    ff = FFuncWrapper(dll_name, func_name, get_func_type(lines), extract_values(lines))
+def dump_func(dll_name, func_name, funcs_list): #0000.dll
+    wrapper = DisasmCLIWrapper(DISASM_PATH)  # or just "disasm-cli" if on PATH
+    lines = wrapper.disasm(DLLS_PATH + dll_name, func_name)
+    ff = FFuncWrapper(dll_name, func_name, get_func_type(lines), extract_int_values(lines))
+    funcs_list.append(ff)
     print(ff)
     if ff.type == None:
         print("WARNING: %s : %d" % (func_name, len(lines)))
 
-def dump_check(dll_name): #0000.dll
+def dump_check(dll_name, fmapping, out_dir): #0000.dll
     func_name = "_Z5checkPh"
-    wrapper = DisasmCLIWrapper("./disasm-cli")  # or just "disasm-cli" if on PATH
-    lines = wrapper.disasm("./../resources/dlls/" + dll_name, func_name)
+    wrapper = DisasmCLIWrapper(DISASM_PATH)  # or just "disasm-cli" if on PATH
+    lines = wrapper.disasm(DLLS_PATH + dll_name, func_name)
     #print_all(lines)
-    print("### %s.%s" % (dll_name, func_name))
-    funcs = extract_dll_and_func(lines)
-    for dll,func in funcs:
-        dump_func(dll + ".dll", func)
+    #print("### %s.%s" % (dll_name, func_name))
+
     values = extract_values(lines)
     cfunc = CheckFuncWrapper(dll_name, values)
     cfunc.solve()
-    print(cfunc)
-    m0_hex = [f"0x{v:x}" for v in cfunc.m0]
-    print(f"Precalculated: {m0_hex}")
+    
+    raw_func_list = extract_dll_and_func(lines)
+    for dll_func in raw_func_list:
+        if not dll_func in fmapping.keys():
+            print(f"Function not found: {dll_func})")
+            dll, func = dll_func.split(".dll.", 1)
+            dump_func(dll + ".dll", func, cfunc.funcs_list)
+            continue
+        rec = fmapping[dll_func]
+        #print(rec)
+        cfunc.funcs_list.append(rec)
+    #    dump_func(dll + ".dll", func, cfunc.funcs_list)
 
-dump_check("0293.dll")
+    out_file = out_dir + "//" + dll_name + ".resolved.txt"
+    pkl_file = out_dir + "//" + dll_name + ".pkl"
+    save_cfunc_as_pickle(cfunc, pkl_file)
+    
+    with open(out_file, "w", encoding="utf-8") as f:
+        m0_hex = [f"0x{v:x}" for v in cfunc.m0]
+        f.write(f"Precalculated: {m0_hex}\n")
+        #f.write(f"{cfunc}\n")
+        for func in cfunc.funcs_list:
+            f.write(f"{func}\n")
+    print(f"{dll_name} -> {m0_hex}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Run disasm wrapper to extract arguments")
+    parser.add_argument('--fmap', dest="fmap", required=True,
+                        help="Pickle with func args mapping")
+    parser.add_argument('--inpath', dest="inpath", required=True,
+                        help="Path to input file or directory")
+    parser.add_argument('--outpath', dest="outpath", required=True,
+                        help="Path to the output directory")
+    args = parser.parse_args()
+    
+    print("Load pickled functions mapping")
+    #mapping: dict[str, FFuncWrapper] = {}
+    mapping = load_map_from_pickle(args.fmap)
+    print(f"Map loaded, size: {len(mapping)}")
+
+    if os.path.isdir(args.inpath):
+        # Process all files in directory
+        for root, dirs, files in os.walk(args.inpath):
+            DLLS_PATH = root
+            for fname in files:
+                if not fname.endswith(".dll"):
+                    continue
+                filepath = os.path.join(root, fname)
+                dump_check(fname, mapping, args.outpath)
+    else:
+        # Single file
+        dump_check(args.inpath)
+
+if __name__ == "__main__":
+    main()
