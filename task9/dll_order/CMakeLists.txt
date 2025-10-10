@@ -10,6 +10,7 @@ set (srcs
 set (hdrs
 	util.h
 	verif.h
+	dll_deps.h
 )
 
 add_executable ( ${PROJECT_NAME} ${hdrs} ${srcs} ${rsrc} main.cpp )
