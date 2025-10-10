@@ -13,13 +13,20 @@
 #include "matrix_exp.h"
 #endif //TEST_MATRIX
 
+//#define SINGLE_TEST
+#define NULL_BUFFER
+
 #include "parse_records.h"
 
 #define CHUNK_SIZE 32
 
 unsigned char g_NullBuf[40080] = { 0 };
 
-BYTE* g_Buffer1 = g_NullBuf;// g_VerifBuf;
+#ifdef NULL_BUFFER
+BYTE* g_Buffer1 = g_NullBuf;
+#else
+BYTE* g_Buffer1 = g_VerifBuf;
+#endif
 
 
 void hexdump_print(BYTE *buf, const char *label, size_t size = CHUNK_SIZE)
@@ -34,11 +41,11 @@ void test_0000_dll(BYTE *input)
     WORD* bufw = (WORD*)input;
     printf("Transform1...\n");
     uint64_t kQargs_1[4] = { 0x22F130E6FAFE934BLL, 0x777FD23EB0B83B25LL, 0xF605C9124BC28C77LL, 0x59263089104BC46BLL };
-    f_type1(input, kQargs_1);
+    f_type1(input, 0, kQargs_1);
     hexdump_print((BYTE*)bufw, "Buffer after");
 
     uint64_t kQargs_2[4] = { 0x2759439DC26540DFLL, 0x90D15DB9CF959B34LL, 0xD5CA662B8655DC90LL, 0x198E45265B4D53D1LL };
-    f_type1(input, kQargs_2);
+    f_type1(input, 0, kQargs_2);
 
     hexdump_print((BYTE*)bufw, "Buffer after");
 
@@ -76,7 +83,7 @@ void test_0000_dll(BYTE *input)
     v5[30] = 0x97411AA4E6D18E85LL;
     v5[31] = 0x8FDD96E04581CD3FLL;
 
-    f_type2(input, v5);
+    f_type2(input, 0, v5);
     hexdump_print(input, "Buffer after");
 
     uint64_t v6[5];
@@ -84,7 +91,7 @@ void test_0000_dll(BYTE *input)
     v6[1] = 0x6041B171D19010CLL;
     v6[2] = 0x1F100E0913111503LL;
     v6[3] = 0xA12050816181C0BLL;
-    f_type3(input, v6);
+    f_type3(input, 0, v6);
     hexdump_print(input, "Buffer after");
 }
 #ifdef TEST_MATRIX
@@ -146,14 +153,15 @@ void apply_functions(BYTE buf[CHUNK_SIZE], std::vector<FFuncWrapperC*> &wrappers
     for (auto itr = wrappers.begin(); itr != wrappers.end(); ++itr) {
         const FFuncWrapperC* wr = *itr;
         std::cout << wr->dll << " : " << wr->type << std::endl;
+        WORD dll_id = atoi(wr->dll.c_str());
         if (wr->type == 1) {
-            f_type1(buf, wr->args.data());
+            f_type1(buf, dll_id, wr->args.data());
         }
         else if (wr->type == 2) {
-            f_type2(buf, wr->args.data());
+            f_type2(buf, dll_id, wr->args.data());
         }
         else if (wr->type == 3) {
-            f_type3(buf, wr->args.data());
+            f_type3(buf, dll_id, wr->args.data());
         }
         hexdump(buf, CHUNK_SIZE);
     }
@@ -164,14 +172,18 @@ void apply_functions_inv(BYTE buf[CHUNK_SIZE], std::vector<FFuncWrapperC*>& wrap
 {
     for (auto itr = wrappers.rbegin(); itr != wrappers.rend(); ++itr) {
         const FFuncWrapperC* wr = *itr;
+        WORD dll_id = atoi(wr->dll.c_str());
+#ifdef _DEBUG
+        std::cout << std::dec << "DLL:" << wr->dll << " -> " << dll_id << std::endl;
+#endif //_DEBUG
         if (wr->type == 1) {
-            f_type1_inv(buf, wr->args.data());
+            f_type1_inv(buf, dll_id, wr->args.data());
         }
         else if (wr->type == 2) {
-            f_type2_inv(buf, wr->args.data());
+            f_type2_inv(buf, dll_id, wr->args.data());
         }
         else if (wr->type == 3) {
-            f_type3_inv(buf, wr->args.data());
+            f_type3_inv(buf, dll_id, wr->args.data());
         }
     }
 #ifdef _DEBUG
@@ -198,6 +210,35 @@ bool solve_chunk(const std::string& input_file, BYTE buf[CHUNK_SIZE])
     return true;
 }
 
+#ifdef SINGLE_TEST
+int main(int argc, char* argv[])
+{
+    if (argc < 2) {
+        std::cout << "Usage: <listing_file>\n";
+        return 0;
+    }
+    char* input_file = argv[1];
+    size_t input_size = 0;
+    std::vector<FFuncWrapperC*> wrappers;
+    Precalculated * prec = nullptr;
+    read_resolved(input_file, &prec, wrappers);
+    
+    BYTE buf[CHUNK_SIZE] = { 0 };
+    if (prec) {
+        for (size_t i = 0; i < MATRIX_SIZE; i++) {
+            ::memcpy(&buf[i * sizeof(uint64_t)], &prec->values[i], sizeof(uint64_t));
+        }
+    }
+    apply_functions_inv(buf, wrappers);
+    hexdump(buf, CHUNK_SIZE);
+    std::string outFile = get_base_filename(input_file) + "_chunk.bin";
+    if (write_to_file(outFile.c_str(), buf, CHUNK_SIZE)) {
+        std::cout << "Chunk saved to: " << outFile << "\n";
+    }
+    return 0;
+}
+
+#else
 int main(int argc, char *argv[])
 {
     if (argc < 3) {
@@ -236,3 +277,4 @@ int main(int argc, char *argv[])
     }
     return 0;
 }
+#endif

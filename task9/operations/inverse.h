@@ -100,7 +100,7 @@ static void build_E_bytes(const uint64_t kQargs[4], BYTE Ebytes[31]) {
 
 // --- The inverse of f_type1 ---
 
-BYTE* f_type1_inv(BYTE* arg1, const uint64_t kQargs[4]) {
+BYTE* f_type1_inv(BYTE* arg1, size_t dll_id, const uint64_t kQargs[4]) {
     DWORD* arg1_d = (DWORD*)arg1;
     DWORD* verif = (DWORD*)g_Buffer1;
 
@@ -133,7 +133,7 @@ BYTE* f_type1_inv(BYTE* arg1, const uint64_t kQargs[4]) {
 
     // 5) Undo the very first XOR on the first DWORD
     DWORD* x1_d = (DWORD*)x1;
-    x1_d[0] ^= verif[0];
+    x1_d[0] ^= verif[dll_id];
 
     // 6) Write back
     memcpy(arg1, x1, 32);
@@ -143,7 +143,7 @@ BYTE* f_type1_inv(BYTE* arg1, const uint64_t kQargs[4]) {
 //---
 // --- The inverse of f_type2 ---
 
-BYTE* f_type2_inv(BYTE* arg1, const uint64_t kQargs[33])
+BYTE* f_type2_inv(BYTE* arg1, size_t dll_id, const uint64_t kQargs[33])
 {
     // Treat kQargs as a 256-byte S-box: T[i] = ((BYTE*)kQargs)[i]
     const BYTE* T = (const BYTE*)kQargs;
@@ -162,12 +162,12 @@ BYTE* f_type2_inv(BYTE* arg1, const uint64_t kQargs[33])
     // 2) Undo the initial DWORD XOR (XOR is its own inverse)
     DWORD* arg1_d = (DWORD*)arg1;
     DWORD* verif = (DWORD*)g_Buffer1;   // must be the same verif[0] as used in f_type2
-    arg1_d[0] ^= verif[0];
+    arg1_d[0] ^= verif[dll_id];
 
     return arg1;
 }
 
-BYTE* f_type3_inv(BYTE* arg1, const uint64_t kQargs[4])
+BYTE* f_type3_inv(BYTE* arg1, size_t dll_id, const uint64_t kQargs[4])
 {
     const BYTE* p = (const BYTE*)kQargs; // 32-byte permutation
     BYTE tmp[32];
@@ -185,7 +185,7 @@ BYTE* f_type3_inv(BYTE* arg1, const uint64_t kQargs[4])
     // Undo the initial XOR (XOR is its own inverse)
     DWORD* arg1_d = (DWORD*)arg1;
     DWORD* verif = (DWORD*)g_Buffer1;
-    arg1_d[0] ^= verif[0];
+    arg1_d[0] ^= verif[dll_id];
 
     return arg1;
 }

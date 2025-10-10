@@ -3,11 +3,11 @@
 
 extern BYTE* g_Buffer1;
 
-BYTE* f_type1(BYTE* arg1, const uint64_t kQargs[4])
+BYTE* f_type1(BYTE* arg1, size_t dll_id, const uint64_t kQargs[4])
 {
     DWORD* arg1_d = (DWORD*)arg1;
     DWORD* verif = (DWORD*)g_Buffer1;
-    arg1_d[0] ^= verif[0];
+    arg1_d[0] ^= verif[dll_id];
 
     char flag = *arg1 & 1;
     *arg1 |= 1;
@@ -61,11 +61,11 @@ BYTE* f_type1(BYTE* arg1, const uint64_t kQargs[4])
     return arg1;
 }
 
-BYTE* f_type2(BYTE* arg1, const uint64_t kQargs[33])
+BYTE* f_type2(BYTE* arg1, size_t dll_id, const uint64_t kQargs[33])
 {
     DWORD* arg1_d = (DWORD*)arg1;
     DWORD* verif = (DWORD*)g_Buffer1;
-    arg1_d[0] ^= verif[0];
+    arg1_d[0] ^= verif[dll_id];
 
     for (size_t i = 0; i <= 31; ++i)
     {
@@ -75,11 +75,11 @@ BYTE* f_type2(BYTE* arg1, const uint64_t kQargs[33])
 }
 
 
-BYTE* f_type3(BYTE* arg1, const uint64_t kQargs[4])
+BYTE* f_type3(BYTE* arg1, size_t dll_id, const uint64_t kQargs[4])
 {
     DWORD* arg1_d = (DWORD*)arg1;
     DWORD* verif = (DWORD*)g_Buffer1;
-    arg1_d[0] ^= verif[0];
+    arg1_d[0] ^= verif[dll_id];
 
     BYTE backup1[32] = { 0 };
 
