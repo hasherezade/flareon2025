@@ -1,3 +1,6 @@
 [submodule "task9/loader/libpeconv"]
 	path = task9/loader/libpeconv
 	url = https://github.com/hasherezade/libpeconv
+[submodule "task9/dependencies/libpeconv"]
+	path = task9/dependencies/libpeconv
+	url = https://github.com/hasherezade/libpeconv
