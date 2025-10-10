@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
     const size_t chunks_max = 10000;
 
-    std::map<WORD, dll_deps> dllToDeps;
+    std::map<WORD, dll_deps*> dllToDeps;
 
     for (WORD id = 0; id < chunks_max; id++) {
         std::stringstream ss;
@@ -108,21 +108,22 @@ int main(int argc, char *argv[])
         std::string input_file = ss.str();
         size_t mod_size = 0;
         
-        dll_deps deps(input_file);
-
-        my_func_resolver resolver(deps);
+        dll_deps *deps = new dll_deps(input_file);
+        my_func_resolver resolver(*deps);
+        dllToDeps[deps->dll] = deps;
         BYTE* mainMod = peconv::load_pe_executable(input_file.c_str(), mod_size, (peconv::t_function_resolver*)&resolver);
         if (!mainMod) {
             std::cout << "Failed to load: " << input_file <<"\n";
             continue;
         }
-
-        deps.print(oFile);
-
         peconv::free_pe_buffer(mainMod);
 
     }
-    oFile.close();
+    for (auto itr = dllToDeps.begin(); itr != dllToDeps.end(); ++itr) {
+        dll_deps* dep = itr->second;
+        dep->print(oFile);
 
+    }
+    oFile.close();
     return 0;
 }
