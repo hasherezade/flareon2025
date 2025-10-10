@@ -1,6 +1,8 @@
 #include <windows.h>
 #include <iostream>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 #include "util.h"
 #include "verif.h"
@@ -172,33 +174,65 @@ void apply_functions_inv(BYTE buf[CHUNK_SIZE], std::vector<FFuncWrapperC*>& wrap
             f_type3_inv(buf, wr->args.data());
         }
     }
+#ifdef _DEBUG
     std::cout << "After Inv:";
     hexdump(buf, CHUNK_SIZE);
     std::cout << std::endl;
+#endif
 }
 
-int main(int argc, char *argv[])
+bool solve_chunk(const std::string& input_file, BYTE buf[CHUNK_SIZE])
 {
-    if (argc < 2) {
-        std::cout << "Usage: <listing_file>\n";
-        return 0;
-    }
-    char* input_file = argv[1];
-    size_t input_size = 0;
     std::vector<FFuncWrapperC*> wrappers;
     Precalculated* prec = nullptr;
     read_resolved(input_file, &prec, wrappers);
 
-    BYTE buf[CHUNK_SIZE] = { 0 };
-    if (prec) {
-        for (size_t i = 0; i < MATRIX_SIZE; i++) {
-            ::memcpy(&buf[i * sizeof(uint64_t)], &prec->values[i], sizeof(uint64_t));
-        }
+    if (!prec) {
+        return false;
+    }
+    ::memset(buf, 0, CHUNK_SIZE);
+    for (size_t i = 0; i < MATRIX_SIZE; i++) {
+        ::memcpy(&buf[i * sizeof(uint64_t)], &prec->values[i], sizeof(uint64_t));
     }
     apply_functions_inv(buf, wrappers);
-    std::string outFile = get_base_filename(input_file) + "_chunk.bin";
-    if (write_to_file(outFile.c_str(), buf, CHUNK_SIZE)) {
-        std::cout << "Chunk saved to: " << outFile << "\n";
+    return true;
+}
+
+int main(int argc, char *argv[])
+{
+    if (argc < 3) {
+        std::cout << "Usage: <listing_dir> <out_file>\n";
+        return 0;
+    }
+    std::string input_dir = argv[1];
+    std::string out_file = argv[2];
+    const size_t chunks_max = 10000;
+    const size_t chunk_full_size = CHUNK_SIZE + sizeof(WORD);
+    const size_t license_size = chunks_max * chunk_full_size;
+    std::cout << "License total size: " << license_size << std::endl;
+    BYTE* license = (BYTE*)::calloc(license_size, 1);
+
+    for (WORD id = 0; id < chunks_max; id++) {
+        std::stringstream ss;
+        ss << input_dir << "\\"
+            << std::setw(4) << std::setfill('0') << id
+            << ".dll.resolved.txt";
+
+        //std::cout << "Chunk id: " << std::dec << id << std::endl;
+        std::string input_file = ss.str();
+        
+        BYTE buf[CHUNK_SIZE] = { 0 };
+        if (!solve_chunk(input_file, buf)) {
+            std::cerr << "Failed to solve chunk: " << id << std::endl;
+            return (-1);
+        }
+        BYTE* chunk = &license[id * chunk_full_size];
+        ::memcpy(chunk, &id, sizeof(WORD));
+        ::memcpy(chunk + sizeof(WORD), buf, CHUNK_SIZE);
+    }
+
+    if (write_to_file(out_file.c_str(), license, license_size)) {
+        std::cout << "License saved to: " << out_file << "\n";
     }
     return 0;
 }
