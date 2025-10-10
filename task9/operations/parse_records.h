@@ -8,7 +8,7 @@
 #include <regex>
 #include <cstdint>
 #include <iostream>
-#include <optional>
+#include <set>
 
 #define MATRIX_SIZE 4
 
@@ -25,7 +25,6 @@ struct Precalculated {
 };
 
 Precalculated* parsePrecalculatedLine(const std::string& line);
-
 
 size_t read_resolved(const std::string& inpFile, Precalculated** prec, std::vector<FFuncWrapperC*>& wrappers);
 

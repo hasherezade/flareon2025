@@ -13,6 +13,7 @@ set (hdrs
 	ffuncs.h
 	inverse.h
 	parse_records.h
+	order.h
 )
 
 add_executable ( ${PROJECT_NAME} ${hdrs} ${srcs} ${rsrc} main.cpp )

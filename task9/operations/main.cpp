@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <map>
 
 #include "util.h"
 #include "verif.h"
@@ -17,6 +18,8 @@
 #define NULL_BUFFER
 
 #include "parse_records.h"
+#include "dll_deps.h"
+#include "order.h"
 
 #define CHUNK_SIZE 32
 
@@ -241,19 +244,27 @@ int main(int argc, char* argv[])
 #else
 int main(int argc, char *argv[])
 {
-    if (argc < 3) {
-        std::cout << "Usage: <listing_dir> <out_file>\n";
+    if (argc < 4) {
+        std::cout << "Usage: <listing_dir> <dependencies> <out_file>\n";
         return 0;
     }
     std::string input_dir = argv[1];
-    std::string out_file = argv[2];
+    std::string deps_file = argv[2];
+    std::string out_file = argv[3];
+
+    DWORD* verif = (DWORD*)g_Buffer1;
+    std::map<WORD, DllInfo> dllInfos;
+    read_dependencies(deps_file, dllInfos);
+
     const size_t chunks_max = 10000;
     const size_t chunk_full_size = CHUNK_SIZE + sizeof(WORD);
     const size_t license_size = chunks_max * chunk_full_size;
     std::cout << "License total size: " << license_size << std::endl;
     BYTE* license = (BYTE*)::calloc(license_size, 1);
 
-    for (WORD id = 0; id < chunks_max; id++) {
+    for (size_t i = 0; i < chunks_max; i++) {
+        WORD id = g_DllOrder[i];
+        //std::cout << "ID: " << id << "\n";
         std::stringstream ss;
         ss << input_dir << "\\"
             << std::setw(4) << std::setfill('0') << id
@@ -267,9 +278,15 @@ int main(int argc, char *argv[])
             std::cerr << "Failed to solve chunk: " << id << std::endl;
             return (-1);
         }
-        BYTE* chunk = &license[id * chunk_full_size];
+        BYTE* chunk = &license[i * chunk_full_size];
         ::memcpy(chunk, &id, sizeof(WORD));
         ::memcpy(chunk + sizeof(WORD), buf, CHUNK_SIZE);
+
+        verif[id] += i;
+        for (auto dItr = dllInfos[id].deps.begin(); dItr != dllInfos[id].deps.end(); ++dItr) {
+            WORD nextId = *dItr;
+            verif[nextId] += i;
+        }
     }
 
     if (write_to_file(out_file.c_str(), license, license_size)) {

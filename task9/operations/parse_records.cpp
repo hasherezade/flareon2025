@@ -1,5 +1,9 @@
 #include "parse_records.h"
 
+#include <Windows.h>
+#include <sstream>
+
+
 // Parse: FFuncWrapper(dll=0000.dll, type=1, args=['0x...', '0x...', ...])
 FFuncWrapperC* parseFFuncWrapper(const std::string& line)
 {
@@ -60,7 +64,6 @@ Precalculated* parsePrecalculatedLine(const std::string& line)
     }
     return out;
 }
-
 
 size_t read_resolved(const std::string &inpFile, Precalculated** prec, std::vector<FFuncWrapperC*> &wrappers)
 {
