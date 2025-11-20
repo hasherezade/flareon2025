@@ -126,7 +126,7 @@ size_t register_modules()
 int main(int argc, char *argv[])
 {
     if (argc < 4) {
-        std::cout << "Usage: <input_file> <dll_to_chek> <mode*>\n";
+        std::cout << "Usage: <input_file> <dll_to_check> <mode*>\n";
         std::cout << "*mode: 0 - use 0 buffer; 1 - use verification buffer\n";
         return 0;
     }
