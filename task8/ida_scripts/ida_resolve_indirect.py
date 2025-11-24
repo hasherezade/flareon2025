@@ -22,9 +22,11 @@ def load_rva_map(path):
     if not os.path.exists(path):
         ida_kernwin.warning(f"[mark_obfuc] tags file not found: {path}")
         return {}
-
+    # Match both old and new TinyTracer formats:
+    #   old: <rva>;to: <va> [<imgbase> + <rva2>]
+    #   new: <rva>;[insn] to: <va> [<imgbase> + <rva2>]
     pattern = re.compile(
-        r'^\s*([0-9A-Fa-f]+)\s*;\s*to:\s*([0-9A-Fa-fx]+)\s*\[.*\+\s*([0-9A-Fa-f]+)\s*\]',
+        r'^\s*([0-9A-Fa-f]+)\s*;\s*(?:\[[^\]]+\]\s*)?to:\s*([0-9A-Fa-fx]+)\s*\[.*\+\s*([0-9A-Fa-f]+)\s*\]',
         re.IGNORECASE
     )
     rva_map = {}
