@@ -25,11 +25,13 @@ int main(int argc, char* argv[])
             WORD arg = inp | (0x100 * pos);
             uint64_t val0 = _get_translated(nullptr, pos);
             uint64_t val1 = _get_translated(nullptr, arg);
-            std::cout << std::hex << val0 * val1;
+            std::cout << std::hex << "0x" << val0 * val1;
             if (pos != 25) std::cout << ", ";
             if ((pos % 5) == 0) std::cout << "\n";
         }
-        std::cout << "]" << std::endl;
+        std::cout << "]";
+        if (dig < 9) std::cout << ", ";
+        std::cout << std::endl;
     }
     
     return 0;
